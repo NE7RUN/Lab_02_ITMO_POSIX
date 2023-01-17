@@ -1,4 +1,24 @@
-#pragma once
+#ifndef PRODUCERCONSUMER
+#define PRODUCERCONSUMER
+#include <pthread.h>
 
-// the declaration of run threads can be changed as you like
-int run_threads();
+int run_threads(int, int, bool);
+
+struct producerInfo {
+  int* shared;
+};
+
+struct interrupterInfo {
+  int workingConsumersAmount;
+  pthread_t* consumers;
+};
+
+struct consumerInfo {
+  int* shared;
+  int sleepTime;
+  int* global;
+  consumerInfo(int* shared, int sleepingTime, int* global)
+      : shared(shared), sleepingTime(sleepingTime), global(global){};
+};
+
+#endif
