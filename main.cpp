@@ -1,7 +1,21 @@
+#include <string.h>
 #include <iostream>
 #include "producer_consumer.h"
+using namespace std;
 
-int main() {
-  std::cout << run_threads() << std::endl;
-  return 0;
+int main(int argc, char** argv) 
+{
+  bool debug = false;
+  if (argc < 3) 
+  {
+    cout << "Not enough arguments!" << endl;
+    return 1;
+  }
+  if (argc == 4 && !strcmp("-debug", argv[3])) 
+  {
+    debug = true;
+  }
+  int threadsNumber = atoi(argv[1]);
+  int sleepLimit = atoi(argv[2]);
+  cout << run_threads(threadsNumber, sleepLimit, debug);
 }
