@@ -7,7 +7,7 @@ using namespace std;
 int main(int argc, char** argv) {
   bool debug = false;
   if (argc < 3) {
-    cout << "íåîáõîäèìî 3+N" << endl;
+    cout << "need 3+N" << endl;
     return 1;
   }
   if (argc == 4 && !strcmp("-debug", argv[3])) {
