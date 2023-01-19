@@ -1,18 +1,16 @@
+#include <pthread.h>
 #include <string.h>
 #include <iostream>
 #include "producer_consumer.h"
 using namespace std;
 
-int main(int argc, char** argv) 
-{
+int main(int argc, char** argv) {
   bool debug = false;
-  if (argc < 3) 
-  {
-    cout << "Not enough arguments!" << endl;
+  if (argc < 3) {
+    cout << "íåîáõîäèìî 3+N" << endl;
     return 1;
   }
-  if (argc == 4 && !strcmp("-debug", argv[3])) 
-  {
+  if (argc == 4 && !strcmp("-debug", argv[3])) {
     debug = true;
   }
   int threadsNumber = atoi(argv[1]);
