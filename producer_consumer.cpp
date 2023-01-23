@@ -8,18 +8,18 @@
 #include <vector>
 using namespace std;
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t consCond = PTHREAD_COND_INITIALIZER;
-pthread_cond_t prodCond = PTHREAD_COND_INITIALIZER;
-
 bool done = false;
 bool debug = false;
 bool waiting = false;
 
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t consCond = PTHREAD_COND_INITIALIZER;
+static pthread_cond_t prodCond = PTHREAD_COND_INITIALIZER;
+
+
 int get_tid() {
-  // 1 to 3+N thread ID
   static atomic<int> last{1};
-  static thread_local int* tid = 0;
+  static thread_local int* tid = nullptr;
   if (tid == NULL) tid = new int(last++);
   return *tid;
 }
@@ -31,7 +31,6 @@ void* producer_routine(void* arg) {
     pthread_mutex_lock(&mutex);
     *info->shared = input;
     pthread_cond_signal(&consCond);
-
     waiting = true;
     while (waiting) {
       pthread_cond_wait(&prodCond, &mutex);
@@ -42,7 +41,7 @@ void* producer_routine(void* arg) {
   pthread_mutex_lock(&mutex);
   pthread_cond_broadcast(&consCond);
   pthread_mutex_unlock(&mutex);
-  return 0;
+  return nullptr;
 }
 
 void writeDebug(int sum) { cout << "(" << get_tid() << ", " << sum << ")\n"; }
@@ -79,7 +78,7 @@ void* consumer_routine(void* arg) {
   *info->global += localSum;
   pthread_mutex_unlock(&mutex);
   delete (info);
-  return 0;
+  return nullptr;
 }
 
 int pickRandomConsumerForInterruptor(int workingConsumersAmount) {
