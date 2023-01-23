@@ -1,7 +1,5 @@
 #ifndef PRODUCERCONSUMER
-
 #define PRODUCERCONSUMER
-
 #include <pthread.h>
 
 int run_threads(int, int, bool);
@@ -10,22 +8,17 @@ struct producerInfo {
   int* shared;
 };
 
-struct interruptorInfo {
+struct interrupterInfo {
   int workingConsumersAmount;
-
   pthread_t* consumers;
 };
 
 struct consumerInfo {
   int* shared;
-
-  int sleepTime;
-
+  int sleepingTime;
   int* global;
-
-  consumerInfo(int* shared, int sleepTime, int* global)
-
-      : shared(shared), sleepTime(sleepTime), global(global){};
+  consumerInfo(int* shared, int sleepingTime, int* global)
+      : shared(shared), sleepingTime(sleepingTime), global(global){};
 };
 
 #endif
