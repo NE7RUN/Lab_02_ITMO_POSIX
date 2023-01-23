@@ -31,10 +31,10 @@ void* producer_routine(void* arg) {
     pthread_mutex_lock(&mutex);
     *info->shared = input;
     pthread_cond_signal(&consCond);
-    waiting = true;
     while (waiting) {
       pthread_cond_wait(&prodCond, &mutex);
     }
+    waiting = true;
     pthread_mutex_unlock(&mutex);
   }
   done = true;
