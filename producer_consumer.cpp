@@ -41,7 +41,7 @@ void* producer_routine(void* arg) {
   pthread_mutex_lock(&mutex);
   pthread_cond_broadcast(&consCond);
   pthread_mutex_unlock(&mutex);
-  return nullptr;
+  return 0;
 }
 
 void writeDebug(int sum) { cout << "(" << get_tid() << ", " << sum << ")\n"; }
@@ -50,7 +50,7 @@ int pickRandomSleepingTime(int sleep) {
   if (sleep) {
     return (rand() % sleep + 1) * 1000;
   } else {
-    return nullptr;
+    return 0;
   }
 }
 
@@ -78,7 +78,7 @@ void* consumer_routine(void* arg) {
   *info->global += localSum;
   pthread_mutex_unlock(&mutex);
   delete (info);
-  return nullptr;
+  return 0;
 }
 
 int pickRandomConsumerForInterruptor(int workingConsumersAmount) {
