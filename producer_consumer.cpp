@@ -12,9 +12,9 @@ bool done = false;
 bool debug = false;
 bool waiting = false;
 
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t consCond = PTHREAD_COND_INITIALIZER;
-static pthread_cond_t prodCond = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t consCond = PTHREAD_COND_INITIALIZER;
+pthread_cond_t prodCond = PTHREAD_COND_INITIALIZER;
 
 int get_tid() {
   static atomic<int> last{1};
@@ -58,7 +58,6 @@ void* consumer_routine(void* arg) {
   thread_local int localSum = 0;
   pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr);
   while (done == false) {
-    pthread_mutex_lock(&mutex);
     if (waiting) {
       localSum += *info->shared;
       waiting = false;
@@ -66,6 +65,7 @@ void* consumer_routine(void* arg) {
         writeDebug(localSum);
       }
     }
+    pthread_mutex_lock(&mutex);
 
     while (waiting == false && done == false) {
       pthread_cond_wait(&consCond, &mutex);
