@@ -41,7 +41,7 @@ void* producer_routine(void* arg) {
   pthread_mutex_lock(&mutex);
   pthread_cond_broadcast(&consCond);
   pthread_mutex_unlock(&mutex);
-  return 0;
+  return nullptr;
 }
 
 void writeDebug(int sum) { cout << "(" << get_tid() << ", " << sum << ")\n"; }
@@ -50,7 +50,7 @@ int pickRandomSleepingTime(int sleep) {
   if (sleep) {
     return (rand() % sleep + 1) * 1000;
   } else {
-    return 0;
+    return nullptr;
   }
 }
 
@@ -78,7 +78,7 @@ void* consumer_routine(void* arg) {
   *info->global += localSum;
   pthread_mutex_unlock(&mutex);
   delete (info);
-  return 0;
+  return nullptr;
 }
 
 int pickRandomConsumerForInterruptor(int workingConsumersAmount) {
@@ -94,7 +94,7 @@ void* consumer_interruptor_routine(void* arg) {
           info->workingConsumersAmount)]);
     }
   }
-  return 0;
+  return nullptr;
 }
 
 // the declaration of run threads can be changed as you like
