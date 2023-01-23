@@ -61,14 +61,15 @@ void* consumer_routine(void* arg) {
   pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr);
   while (done == false) {
     pthread_mutex_lock(&mutex);
-    while (waiting == false && done == false) {
-      pthread_cond_wait(&consCond, &mutex);
-    }
     if (waiting) {
       localSum += *info->shared;
       waiting = false;
       if (debug) {
         writeDebug(localSum);
+      }
+
+      while (waiting == false && done == false) {
+        pthread_cond_wait(&consCond, &mutex);
       }
     }
     pthread_cond_signal(&prodCond);
