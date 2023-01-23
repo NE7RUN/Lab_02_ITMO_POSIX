@@ -16,7 +16,6 @@ static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t consCond = PTHREAD_COND_INITIALIZER;
 static pthread_cond_t prodCond = PTHREAD_COND_INITIALIZER;
 
-
 int get_tid() {
   static atomic<int> last{1};
   static thread_local int* tid = nullptr;
