@@ -5,3 +5,4 @@ tests/doctest.h
 .clang-format
 .gitlab-ci.yml
 /.vs/02posixTry_v2_1/v17/Browse.VC.opendb
+/.vs/LAB_2/v17/Browse.VC.opendb
