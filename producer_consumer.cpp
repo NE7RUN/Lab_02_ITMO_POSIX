@@ -42,7 +42,7 @@ int get_tid() {
   static thread_local int* tid = 0;
   static std::atomic<int> count{0};
 
-  if (tid == 0) tid = ++count;
+  if (tid == 0) tid = new int(++count);
   return *tid;
 }
 
