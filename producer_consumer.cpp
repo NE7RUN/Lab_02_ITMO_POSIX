@@ -1,130 +1,182 @@
-#include "producer_consumer.h"
 #include <pthread.h>
 #include <unistd.h>
 #include <atomic>
-#include <cstddef>
+#include <cstdlib>
+#include <cstring>
 #include <iostream>
-#include <memory>
+#include <sstream>
 #include <vector>
-using namespace std;
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t consCond = PTHREAD_COND_INITIALIZER;
-pthread_cond_t prodCond = PTHREAD_COND_INITIALIZER;
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t condition_producer = PTHREAD_COND_INITIALIZER;
+static pthread_cond_t condition_consumer = PTHREAD_COND_INITIALIZER;
 
-bool done = false;
-bool debug = false;
-bool waiting = false;
+bool debug_is_enabled = false;
+bool end = false;
+bool is_finished = false;
+
+struct consumer {
+  int sleep_time = -1;
+  int* shared_variable;
+  int* count;
+
+  consumer(int sleeper, int* shared_variable, int* count)
+      : sleep_time(sleeper), shared_variable(shared_variable), count(count){};
+};
+
+struct producer {
+  int* shared_variable;
+
+  producer(int* shared_variable) : shared_variable(shared_variable){};
+};
+
+struct interrupter {
+  int size_consumers = -1;
+  pthread_t* all_consumers;
+
+  interrupter(int size_consumers, pthread_t* all_consumers)
+      : size_consumers(size_consumers), all_consumers(all_consumers){};
+};
 
 int get_tid() {
-  // 1 to 3+N thread ID
-  static atomic<int> last{1};
-  static thread_local int* tid = 0;
-  if (tid == NULL) tid = new int(last++);
+  static std::atomic<int> count{0};
+  thread_local static int* tid;
+  if (tid == 0) {
+    tid = new int(++count);
+  }
   return *tid;
 }
 
 void* producer_routine(void* arg) {
-  auto* info = static_cast<producerInfo*>(arg);
-  int input;
-  while (cin >> input) {
-    pthread_mutex_lock(&mutex);
-    *info->shared = input;
-    pthread_cond_signal(&consCond);
+  auto* producer_struct = static_cast<producer*>(arg);
 
-    waiting = true;
-    while (waiting) {
-      pthread_cond_wait(&prodCond, &mutex);
+  std::vector<int> numbers;
+
+  std::string s;
+  getline(std::cin, s);
+
+  std::string::size_type size = s.length();
+  char* const buffer = new char[size + 1];
+
+  strncpy(buffer, s.c_str(), size);
+
+  char* p = strtok(buffer, " ");
+  while (p) {
+    numbers.push_back(std::stoi(p));
+    p = strtok(NULL, " ");
+  }
+
+  for (auto num : numbers) {
+    pthread_mutex_lock(&mutex);
+    // assigning data to a shared variable
+    *(producer_struct->shared_variable) = num;
+    pthread_cond_signal(&condition_consumer);
+
+    while (*(producer_struct->shared_variable) != 0) {
+      pthread_cond_wait(&condition_producer, &mutex);
     }
+
     pthread_mutex_unlock(&mutex);
   }
-  done = true;
+
+  is_finished = true;
   pthread_mutex_lock(&mutex);
-  pthread_cond_broadcast(&consCond);
+  pthread_cond_broadcast(&condition_consumer);
   pthread_mutex_unlock(&mutex);
-  return 0;
-}
 
-void writeDebug(int sum) { cout << "(" << get_tid() << ", " << sum << ")\n"; }
-
-int pickRandomSleepingTime(int sleep) {
-  if (sleep) {
-    return (rand() % sleep + 1) * 1000;
-  } else {
-    return 0;
-  }
-}
-
-void* consumer_routine(void* arg) {
-  auto* info = static_cast<consumerInfo*>(arg);
-  thread_local int localSum = 0;
-  pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr);
-  while (done == false) {
-    pthread_mutex_lock(&mutex);
-    while (waiting == false && done == false) {
-      pthread_cond_wait(&consCond, &mutex);
-    }
-    if (waiting) {
-      localSum += *info->shared;
-      waiting = false;
-      if (debug) {
-        writeDebug(localSum);
-      }
-    }
-    pthread_cond_signal(&prodCond);
-    pthread_mutex_unlock(&mutex);
-    usleep(pickRandomSleepingTime(info->sleepTime));
-  }
-  pthread_mutex_lock(&mutex);
-  *info->global += localSum;
-  pthread_mutex_unlock(&mutex);
-  delete (info);
-  return 0;
-}
-
-int pickRandomConsumerForInterruptor(int workingConsumersAmount) {
-  return rand() % workingConsumersAmount;
-}
-
-void* consumer_interruptor_routine(void* arg) {
-  auto* info = static_cast<interruptorInfo*>(arg);
-  while (!done) {
-    int workingConsumersAmount = info->workingConsumersAmount;
-    if (workingConsumersAmount > 0) {
-      pthread_cancel(info->consumers[pickRandomConsumerForInterruptor(
-          info->workingConsumersAmount)]);
-    }
-  }
+  delete[] buffer;
+  delete (producer_struct);
   return nullptr;
 }
 
+void* consumer_routine(void* arg) {
+  (void)arg;
+  // for every update issued by producer, read the value and add to sum
+  // return pointer to result (for particular consumer)
+  auto* consumer_struct = static_cast<consumer*>(arg);
+  pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr);
+
+  // loop exit test
+  while (!is_finished) {
+    pthread_mutex_lock(&mutex);
+    // waiting for notification from the producer
+    while (!is_finished && *(consumer_struct->shared_variable) == 0) {
+      pthread_cond_wait(&condition_consumer, &mutex);
+    }
+
+    // data reading
+    if (*(consumer_struct->shared_variable) != 0) {
+      *(consumer_struct->count) += *(consumer_struct->shared_variable);
+      if (debug_is_enabled) {
+        std::fprintf(stderr, "tid=%d psum=%d\n", get_tid(),
+                     *(consumer_struct->count));
+      }
+      *(consumer_struct->shared_variable) = 0;
+    }
+
+    pthread_cond_signal(&condition_producer);
+    pthread_mutex_unlock(&mutex);
+
+    usleep(std::rand() % consumer_struct->sleep_time);
+  }
+  delete (consumer_struct);
+  return nullptr;
+}
+
+void* consumer_interruptor_routine(void* arg) {
+  // interrupt random consumer while producer is running
+  auto* interrupter_struct = (interrupter*)arg;
+  // interruptor tryhard
+  while (!is_finished) {
+    pthread_cancel(
+        interrupter_struct
+            ->all_consumers[std::rand() % interrupter_struct->size_consumers]);
+  }
+  delete (interrupter_struct);
+  return nullptr;
+}
 // the declaration of run threads can be changed as you like
-int run_threads(int threadsNumber, int sleepLimit, bool debug) {
-  int* shared = new int;
-  int sum = 0;
-  if (debug) {
-    ::debug = true;
+int run_threads(int consumers, int sleeper, bool debug) {
+  // start N threads and wait until they're done
+  // return aggregated sum of values
+  debug_is_enabled = false;
+  end = false;
+  is_finished = false;
+
+  debug_is_enabled = debug;
+  int shared_variable = 0;
+  int answer = 0;
+
+  int* consumers_variable_count = new int[consumers];
+  pthread_t* consumers_pointers = new pthread_t[consumers];
+  pthread_t producer_pointer, interrupter_pointer;
+
+  for (int i = 0; i < consumers; i++) {
+    consumers_variable_count[i] = 0;
   }
-  pthread_t producer;
-  auto pInfo = producerInfo{shared};
-  pthread_create(&producer, nullptr, producer_routine, &pInfo);
-  pthread_t* consumersPointers = new pthread_t[threadsNumber];
-  for (int i = 0; i < threadsNumber; i++) {
-    pthread_create(&consumersPointers[i], nullptr, consumer_routine,
-                   new consumerInfo(shared, sleepLimit, &sum));
+
+  pthread_create(&producer_pointer, nullptr, producer_routine,
+                 new producer(&shared_variable));
+  for (int i = 0; i < consumers; i++) {
+    pthread_create(&consumers_pointers[i], nullptr, consumer_routine,
+                   new consumer(1000 * sleeper + 1, &shared_variable,
+                                &consumers_variable_count[i]));
   }
-  pthread_t interruptor;
-  auto iInfo = interruptorInfo{threadsNumber, consumersPointers};
-  pthread_create(&interruptor, nullptr, consumer_interruptor_routine, &iInfo);
-  pthread_join(producer, nullptr);
-  for (int i = 0; i < threadsNumber; i++) {
-    pthread_join(consumersPointers[i], nullptr);
+
+  pthread_create(&interrupter_pointer, nullptr, consumer_interruptor_routine,
+                 new interrupter(consumers, consumers_pointers));
+
+  pthread_join(producer_pointer, nullptr);
+  pthread_join(interrupter_pointer, nullptr);
+
+  for (int i = 0; i < consumers; ++i) {
+    pthread_join(consumers_pointers[i], nullptr);
+    answer += consumers_variable_count[i];
   }
-  pthread_join(interruptor, nullptr);
   pthread_mutex_destroy(&mutex);
-  pthread_cond_destroy(&consCond);
-  pthread_cond_destroy(&prodCond);
-  delete[] consumersPointers;
-  delete (shared);
-  return sum;
+  pthread_cond_destroy(&condition_producer);
+  pthread_cond_destroy(&condition_consumer);
+  delete[] consumers_variable_count;
+  delete[] consumers_pointers;
+  return answer;
 }

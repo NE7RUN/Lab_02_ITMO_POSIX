@@ -1,19 +1,22 @@
-#include <pthread.h>
-#include <string.h>
+#include <cstring>
 #include <iostream>
 #include "producer_consumer.h"
-using namespace std;
 
-int main(int argc, char** argv) {
+int main(int argc, char *argv[]) {
+  int consumers, sleeper;
   bool debug = false;
-  if (argc < 3) {
-    cout << "need 3+N" << endl;
+
+  if (argc > 2) {
+    consumers = std::stoi(argv[1]);
+    sleeper = std::stoi(argv[2]);
+    if (argc > 3) {
+      debug = !std::strcmp(argv[3], "-debug");
+    }
+  } else {
+    std::cout << "need more power";
     return 1;
   }
-  if (argc == 4 && !strcmp("-debug", argv[3])) {
-    debug = true;
-  }
-  int threadsNumber = atoi(argv[1]);
-  int sleepLimit = atoi(argv[2]);
-  cout << run_threads(threadsNumber, sleepLimit, debug);
+
+  std::cout << run_threads(consumers, sleeper, debug) << std::endl;
+  return 0;
 }
