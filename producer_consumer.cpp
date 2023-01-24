@@ -56,7 +56,7 @@ void* producer_routine(void* arg) {
   std::string::size_type size = s.length();
   char* const buffer = new char[size + 1];
 
-  strncpy(buffer, s.c_str(), size - 1);
+  strncpy(buffer, s.c_str(), size + 1);
 
   char* p = strtok(buffer, " ");
   while (p) {
