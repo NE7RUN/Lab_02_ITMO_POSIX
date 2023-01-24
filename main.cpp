@@ -7,8 +7,8 @@ int main(int argc, char *argv[]) {
   bool debug = false;
 
   if (argc > 2) {
-    consumers = std::stoi(argv[1]);
-    sleeper = std::stoi(argv[2]);
+    consumers = std::atoi(argv[1]);
+    sleeper = std::atoi(argv[2]);
     if (argc > 3) {
       debug = !std::strcmp(argv[3], "-debug");
     }
