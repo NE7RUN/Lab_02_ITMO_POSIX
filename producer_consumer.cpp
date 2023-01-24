@@ -39,7 +39,7 @@ struct interrupter {
 };
 
 int get_tid() {
-  static atomic<int> last{1};
+  static std::atomic<int> last{1};
   static thread_local int* tid = nullptr;
   if (tid == NULL) tid = new int(last++);
   return *tid;
